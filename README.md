@@ -321,34 +321,6 @@ Our method demonstrates superior performance on video editing tasks compared to 
   </table>
 </div>
 
-### Different Edits on the Same Subject
-
-<table class="center">
-  <tr>
-    <td style="text-align: center"><b>Original Video</b></td>
-    <td style="text-align: center"><b>Add Mustache</b></td>
-    <td style="text-align: center"><b>Keep Smile</b></td>
-    <td style="text-align: center"><b>Keep Mouth Open</b></td>
-  </tr>
-  <tr>
-    <td style="text-align: center"><img width="250" height="150" src="assets/samples/bob.gif"></a></td>
-    <td style="text-align: center"><img src="assets/samples/bob_mustache.gif"></a></td>
-    <td style="text-align: center"><img src="assets/samples/bob_smile.gif"></a></td>
-    <td style="text-align: center"><img src="assets/samples/bob_mouth.gif"></a></td>
-  </tr>
-  <tr>
-    <td style="text-align: center"><img width="250" height="150" src="samples/haley.gif"></a></td>
-    <td style="text-align: center"><img src="assets/samples/haley_mustache.gif"></a></td>
-    <td style="text-align: center"><img src="assets/samples/haley_lip.gif"></a></td>
-    <td style="text-align: center"><img src="assets/samples/haley_smile.gif"></a></td>
-  </tr>
-  <tr>
-    <td style="text-align: center"><img width="250" height="150" src="samples/kate.gif"></a></td>
-    <td style="text-align: center"><img src="assets/samples/kate_mustache.gif"></a></td>
-    <td style="text-align: center"><img src="assets/samples/kate_lip.gif"></a></td>
-    <td style="text-align: center"><img src="assets/samples/kate_smile.gif"></a></td>
-  </tr>
-</table>
 
 ### Output
 
