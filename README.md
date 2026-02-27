@@ -94,6 +94,27 @@ python main_flowedit.py \
 
 **Note**: The entry point is `main_flowedit.py`, but our novel masking algorithm is implemented in `inversion/p2p_h_edit.py` within the `h_Edit_p2p_flowedit_w_guide` function.
 
+### Running on PieBench Dataset
+
+For running FlowEdit on the PieBench evaluation dataset, use `main_p2p_pie.py`:
+
+```bash
+# Run FlowEdit on all PieBench categories (0-9)
+python main_p2p_pie.py \
+    --mode guide \
+    --data_path "/path/to/PIE-Bench_v1" \
+    --output_path "./results/pie_flowedit" \
+    --edit_category_list 0 1 2 3 4 5 6 7 8 9 \
+    --eta 1.0 \
+    --cfg_src_edit 5.0 \
+    --cfg_tar 7.5 \
+    --xa 0.4 \
+    --sa 0.35
+
+```
+
+**Note**: `main_p2p_pie.py` uses the same masking algorithm in `inversion/p2p_h_edit.py` but is specifically designed for the structured PieBench evaluation dataset.
+
 ## Parameters
 
 ### Guidance Parameters
@@ -123,7 +144,7 @@ python main_flowedit.py \
 
 ### Parameter Tuning
 FlowEdit uses these parameters from `main_flowedit.py` to control the editing process:
-1. **`--cfg_src_edit` and `--cfg_tar`: Control classifier-free guidance strengths for computing edit directions. These affect the `edit_term` in your masking algorithm.
+1. **`--cfg_src_edit` and `--cfg_tar`**: Control classifier-free guidance strengths for computing edit directions. These affect the `edit_term` in your masking algorithm.
 2. **`--optimization_steps`**: Number of iterative refinement steps (default: 1)
 3. **`--eta`**: DDPM stochasticity
 
