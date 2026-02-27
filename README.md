@@ -124,14 +124,15 @@ python main_flowedit.py \
 ## Best Practices
 
 ### Parameter Tuning
-1. **Set $\hat{w}^{orig}$ close to $w^{edit}$** for optimal FlowEdit reconstruction-editing balance
-2. **For challenging cases**: Increase both $w^{edit}$ and $\hat{w}^{orig}$, utilize implicit formulation with multiple optimization steps
-3. **Reconstruction weight**: `[0.0, 0.1]` - lower for complex edits, higher for enhanced preservation
+FlowEdit uses these parameters from `main_flowedit.py` to control the editing process:
+1. **`--cfg_src_edit` and `--cfg_tar`: Control classifier-free guidance strengths for computing edit directions. These affect the `edit_term` in your masking algorithm.
+2. **`--optimization_steps`**: Number of iterative refinement steps (default: 1)
+3. **`--eta`**: DDPM stochasticity (1.0 for FlowEdit-R, 0.0 for FlowEdit-D)
 
-### Mode Selection
-- **General editing**: `h_edit_R_p2p` with implicit optimization for superior results
-- **Pose changes**: `h_edit_D_p2p` with MasaCtrl for precise structural modifications
-- **High fidelity**: Increase `optimization_steps`, fine-tune `weight_reconstruction` for optimal quality
+### Tuning FlowEdit's Mechanism
+- **Region-aware editing**: The `diffusion_step` function uses cosine similarity between recon and edit directions in h-space to determine editing regions
+- **Threshold adjustment**: Adjust the `quantile` parameter in masking to control how aggressively editing is applied (higher = more conservative)
+- **Temporal consistency**: For video editing, the masking naturally preserves identity across frames better than global editing approaches
 
 ### Attention Control
 - **P2P recommended** for text-guided editing
