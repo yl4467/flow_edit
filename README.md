@@ -1,4 +1,4 @@
-# PIXEL-PERFECT PUPPETRY: PRECISION-GUIDED ENHANCEMENT FOR FACE IMAGE AND VIDEO EDITING (ICLR26)
+# Pixel-perfect puppetry: Precision-guided Enhancement for Face Image and Video Editing (ICLR26)
 
 This project implements **FlowEdit**, our novel diffusion-based editing framework. We leverage h-Edit to obtain reconstruction and editing direction items, while our core algorithm in `inversion/p2p_h_edit.py` introduces a novel masking mechanism that selectively applies editing based on h-space analysis, achieving state-of-the-art performance in both reconstruction fidelity and editing precision.
 ![framework](assets/framework_flowedit.png)
