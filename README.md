@@ -30,10 +30,10 @@ Our novel FlowEdit algorithm is implemented in `inversion/p2p_h_edit.py` within 
 ## Key Technical Components
 
 ### Using h-Edit for Reconstruction and Edit Items
-We utilize h-Edit's established methods to obtain the foundational items for our algorithm:
+We utilize established pullback-based methods to obtain the foundational items for our algorithm:
 
 ```python
-# Use h-Edit's local_encoder_pullback_zt to get reconstruction direction
+# Use local_encoder_pullback_zt to get reconstruction direction
 _, _, v_orig = model.unet.local_encoder_pullback_zt(
     sample=rec_term.detach(), 
     timesteps=tt, 
@@ -41,7 +41,7 @@ _, _, v_orig = model.unet.local_encoder_pullback_zt(
     op='mid', block_idx=0, pca_rank=1, ...
 )
 
-# Use h-Edit's local_encoder_pullback_zt to get editing direction  
+# Use local_encoder_pullback_zt to get editing direction  
 _, _, v_edit = model.unet.local_encoder_pullback_zt(
     sample=edit_term.detach(), 
     timesteps=tt, 
