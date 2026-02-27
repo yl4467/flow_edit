@@ -1,0 +1,5 @@
+- image: /752.jpg
+  source_prompt: a person without eyeglasses
+  target_prompt: a person with eyeglasses
+  blended_word: person person
+  editing_instruction: Add eyeglasses to the person
