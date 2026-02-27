@@ -1,112 +1,412 @@
-# *h*-Edit: Effective and Flexible Diffusion-Based Editing via Doob’s *h*-Transform (CVPR'25)
+# PIXEL-PERFECT PUPPETRY: PRECISION-GUIDED ENHANCEMENT FOR FACE IMAGE AND VIDEO EDITING (ICLR26)
 
-<a href="https://arxiv.org/pdf/2503.02187"><img src="https://img.shields.io/badge/https%3A%2F%2Farxiv.org%2Fabs%2F2503.02187-arxiv-brightred"></a>
+This project implements **FlowEdit**, our novel diffusion-based editing framework. We leverage h-Edit to obtain reconstruction and editing direction items, while our core algorithm in `inversion/p2p_h_edit.py` introduces a novel masking mechanism that selectively applies editing based on h-space analysis, achieving state-of-the-art performance in both reconstruction fidelity and editing precision.
+![framework](assets/framework_flowedit.png)
 
-This sub-folder contains experiments on **text-guided editing** with *h*-Edit. Given an image and its source prompt, we generate edited images that align with a target prompt derived from the source.
+## Core Algorithm
 
-## 🚀 Installation and Quick Start
+Our novel FlowEdit algorithm is implemented in `inversion/p2p_h_edit.py` within the `h_Edit_p2p_flowedit_w_guide` function (lines 724-943). While we utilize h-Edit's `local_encoder_pullback_zt` to obtain reconstruction and editing direction items from h-space, our core contribution is the novel masking mechanism that selectively applies editing based on directional analysis in h-space.
 
-### 🛠️ Environment setup
+### 1. Image Inversion
+- **DDIM/DDPM Inversion**: Convert input image to latent noise representation
+- **Latent Encoding**: Use VAE to encode image into diffusion latent space
+- **Noise Trajectory**: Generate forward diffusion trajectory
 
-We provide environment files for each attention control: `environment_p2p.yaml`, `environment_masactrl.yaml`, and `environment_pnp.yaml`.  For h-Edit-R without Attention Control, use `environment_p2p.yaml`. Create the corresponding environment with:
+### 2. Obtaining Reconstruction and Edit Items via h-Edit
+- **Local Encoder Pullback**: Use h-Edit's `local_encoder_pullback_zt` to compute h-space representations
+- **Extract Directions**: Obtain reconstruction direction (`rec_term`) and editing direction (`edit_term`)
+- **h-Space Analysis**: Compute directional vectors in h-space for both reconstruction and editing
 
-```bash
-conda env create -f environment_p2p.yaml
+### 3. FlowEdit's Mechanism
+- **Directional Analysis**: Compute similarity between reconstruction and editing directions in h-space.
+
+- **Selective Editing**: Apply our novel `diffusion_step` function that selectively combines reconstruction and editing:
+  ```python
+  mask = diffusion_step(rec_term, edit_term, t=int(tt), prox='l1', quantile=cos_similarity, recon_t=400)
+  xt_prev_opt = rec_term + mask * edit_term
+  ```
+- **Region-Aware Editing**: The mask determines which regions should be edited versus preserved, based on h-space directional alignment
+
+## Key Technical Components
+
+### Using h-Edit for Reconstruction and Edit Items
+We utilize h-Edit's established methods to obtain the foundational items for our algorithm:
+
+```python
+# Use h-Edit's local_encoder_pullback_zt to get reconstruction direction
+_, _, v_orig = model.unet.local_encoder_pullback_zt(
+    sample=rec_term.detach(), 
+    timesteps=tt, 
+    context=text_embeddings[:1].detach(),
+    op='mid', block_idx=0, pca_rank=1, ...
+)
+
+# Use h-Edit's local_encoder_pullback_zt to get editing direction  
+_, _, v_edit = model.unet.local_encoder_pullback_zt(
+    sample=edit_term.detach(), 
+    timesteps=tt, 
+    context=text_embeddings[1:].detach(),
+    op='mid', block_idx=0, pca_rank=1, ...
+)
 ```
 
-For the installation of `CLIP`, first activate the installed environment and then run:  
+### FlowEdit's Novel Masking Algorithm
+Our core innovation is the selective editing mechanism based on h-space directional analysis:
 
+- **Cosine Similarity Computation**: Analyze alignment between reconstruction and editing directions
+  ```python
+  cos_similarity = cal_cosine(v_edit, v_orig)
+  ```
+- **Adaptive Masking**: Generate edit/preserve masks based on directional similarity
+  ```python
+  mask = diffusion_step(rec_term, edit_term, t=int(tt), prox='l1', quantile=cos_similarity)
+  ```
+- **Selective Update**: Apply editing only to regions where directions align
+  ```python
+  xt_prev_opt = rec_term + mask * edit_term
+  ```
+
+## Usage
+
+### Environment Setup
 ```bash
+# Create conda environment
+conda env create -f environment_p2p.yaml
+
+# Install CLIP
 pip install --no-cache-dir git+https://github.com/openai/CLIP.git
 ```
 
-All our experiments are conducted on **NVIDIA V100 32GB** GPUs.
+### Running FlowEdit
 
-### 🎬 Running Demo
-
-We provide a quick demo with our strongest version, **implicit *h*-Edit-R + P2P**. You can also use your own images and source prompts to experiment with any target prompt!
+Execute our implementation via `main_flowedit.py`, which calls our novel algorithm in `inversion/p2p_h_edit.py`:
 
 ```bash
-python main_demo.py --implicit
+# Run FlowEdit-R with P2P (recommended configuration)
+python main_flowedit.py \
+    --implicit \
+    --optimization_steps 1 \
+    --weight_reconstruction 0.3 \
+    --cfg_src 1.0 \
+    --cfg_src_edit 5.0 \
+    --cfg_tar 7.5 \
+    --xa 0.4 \
+    --sa 0.35
 ```
 
-### 📊 Running PieBench
+**Note**: The entry point is `main_flowedit.py`, but our novel masking algorithm is implemented in `inversion/p2p_h_edit.py` within the `h_Edit_p2p_flowedit_w_guide` function.
 
-Reproduce our SOTA results on PieBench in *four* steps: 
+## Parameters
 
-1️⃣ **Prepare Dataset** - Download it [here](https://github.com/cure-lab/PnPInversion). No dataset, no party! 🎉 
+### Guidance Parameters
 
-2️⃣ **Setup Environment** - Follow the instructions above for each attention control method. ⚡
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `--cfg_src` | `float` | `1.0` | Classifier-free guidance for source prompt |
+| `--cfg_src_edit` | `float` | `5.0` | Source edit guidance ($\hat{w}^{orig}$) |
+| `--cfg_tar` | `float` | `7.5` | Target edit guidance ($w^{edit}$) |
 
-3️⃣ **Configure & Run** - Key parameters are pre-set in `main_{attention_control}.py`. We’ve got main files for all methods. Feeling lazy? 💤 Just grab our *h*-Edit scripts from `/scripts` and run! 
+### P2P Attention Control Parameters
 
-4️⃣ **Run Evaluation** - Run `evaluation.py` in `/evaluation`, and coffee time ☕ ✨
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `--xa` | `float` | `0.4` | Cross-attention control strength |
+| `--sa` | `float` | `0.35` | Self-attention control strength (0.6 for h-Edit-D, 0.35 for h-Edit-R) |
 
-## 💡 Tips & Usage Guide  
+### Diffusion Parameters
 
-### 🎯 Choosing Attention Control  
-- **P2P** is the recommended default.  
-- **Need pose edits?** Use **MasaCtrl** (e.g., sitting → standing).  
-- **No attention control?** *h*-Edit-R benefits from skipping initial steps for faithfulness.  
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `--num_diffusion_steps` | `int` | `50` | Number of diffusion steps |
+| `--skip` | `int` | `0` | Steps to skip in early diffusion |
+| `--eta` | `float` | `1.0` | DDPM stochasticity (0.0 for deterministic) |
 
-### ⚙️ Using *h*-Edit Effectively  
+## Method Variants
 
-- **Random vs. Deterministic Inversion** - *h*-Edit-R (🎲) generally performs better, except for *MasaCtrl*, where *h*-Edit-D is preferred.
-- **Implicit vs. Explicit Form** - Implicit *h*-Edit is best for tough cases with unique optimization steps. But explicit form can also work well - give it a try!  
-- **Set** $\hat{w}^{\text{orig}}$ **close to** $w^{\text{edit}}$ for *optimal* reconstruction & editing. If too high, lower it—matching or exceeding $w^{\text{edit}}$ may be suboptimal (see our paper!).  
-- **For tough cases, try:**  
-  1️⃣ Increasing both $w^{\text{edit}}$ and $\hat{w}^{\text{orig}}$.  
-  2️⃣ Using implicit *h*-Edit with *multiple optimization steps*, adjust reconstruction weight for better results. A recommended range for the reconstruction weight is `[0.0, 0.1]`, where `0.0` is suitable for extremely challenging cases, and `0.1` if reconstruction is to be prioritised.
-- **Fine-tune P2P Parameters** - Adjust `xa`, `sa` for better control:  
-  - `xa = 0.4`, `sa = 0.6` for *h*-Edit-D on PieBench  
-  - `xa = 0.4`, `sa = 0.35` for *h*-Edit-R on PieBench  
-  - Experiment with your own settings for optimal results!  
+### FlowEdit-R (Random)
+- Employs enhanced stochastic DDPM inversion ($\eta > 0$)
+- Optimized for complex edits requiring maximum flexibility
+- Recommended for most text-guided editing tasks with superior performance
 
-🚀 **Check out our paper for more details - then go edit like a pro!** ✨
+### FlowEdit-D (Deterministic)
+- Utilizes advanced deterministic DDIM inversion ($\eta = 0$)
+- Enhanced for pose changes with MasaCtrl integration
+- More predictable and stable than FlowEdit-R with refined control
 
-## 🏆 Notable Results
+### Implicit vs Explicit Formulations
+- **Implicit**: Our enhanced formulation for challenging cases, leverages advanced optimization
+- **Explicit**: Direct computation approach, faster but less robust for complex scenarios
 
-### 📊 SOTA on PieBench
+## Best Practices
 
-![](../assets/PieBench_Result.png)
+### Parameter Tuning
+1. **Set $\hat{w}^{orig}$ close to $w^{edit}$** for optimal FlowEdit reconstruction-editing balance
+2. **For challenging cases**: Increase both $w^{edit}$ and $\hat{w}^{orig}$, utilize implicit formulation with multiple optimization steps
+3. **Reconstruction weight**: `[0.0, 0.1]` - lower for complex edits, higher for enhanced preservation
 
-### ⚖️ *h*-Edit-D vs. Baselines
+### Mode Selection
+- **General editing**: `h_edit_R_p2p` with implicit optimization for superior results
+- **Pose changes**: `h_edit_D_p2p` with MasaCtrl for precise structural modifications
+- **High fidelity**: Increase `optimization_steps`, fine-tune `weight_reconstruction` for optimal quality
 
-![](assets/teaser/comparison_h_edit_D.png)
+### Attention Control
+- **P2P recommended** for text-guided editing
+- **Fine-tune `xa` and `sa`** based on edit complexity
+- **Global edits**: May need preprocessing for blend words
 
-### ⚖️ *h*-Edit-R vs. Baselines
+## Results and Performance
 
-![](assets/teaser/comparison_h_edit_R.png)
+### Image Editing Results
 
-### 🔍 Impact of $\hat{w}^{\text{orig}}$  
+FlowEdit achieves state-of-the-art performance on image editing tasks, surpassing previous diffusion-based editing approaches in both reconstruction fidelity and editing accuracy.
 
-<p align="center">
-  <img src="assets/teaser/impact_hat_w_orig.png" alt="Impact of hat w orig" width="60%">
-</p>
+![Image Comparison 1](assets/image_samples/comparison_img_3.png)
 
-### 🔍 Robust to $(w^{\text{edit}}, \hat{w}^{\text{orig}})$  
+![Visual Face](assets/image_samples/visual_face.png)
 
-<p align="center">
-  <img src="assets/teaser/impact_hat_w_orig_and_w_edit.png" alt="Robust to ws changes" width="60%">
-</p>
+![Pie Edit 1](assets/image_samples/pie_edit_1.png)
 
-### 🔄 Effect of Implicit Multiple Optimization Steps (1 → 3)
+![Pie Edit 2](assets/image_samples/pie_edit_2.png)
 
-<p align="center">
-  <img src="assets/teaser/impact_MOS.png" alt="Impact of MOS" width="60%">
-</p>
+![Pie Edit 3](assets/image_samples/pie_edit_3.png)
 
-## 🎖️ Acknowledgments
+### Video Editing Results
 
-We acknowledge the following implementations used in our development of *h*-Edit:  
+Our method demonstrates superior performance on video editing tasks compared to existing approaches (LatentTrans, STIT, DVA).
 
-- [Edit Friendly](https://github.com/inbarhub/DDPM_inversion)  
-- [PnP Inversion](https://github.com/cure-lab/PnPInversion/)  
-- [Noise Map Guidance](https://github.com/hansam95/NMG)  
-- [Prompt-to-Prompt](https://github.com/google/prompt-to-prompt)  
+#### Add Mustache - Non-paste-back Comparison
 
-A huge thanks to these amazing works! 🙌 
+<div align="center">
+  <table>
+    <tr>
+      <th style="text-align: center">Original Video</th>
+      <th style="text-align: center">LatentTrans</th>
+      <th style="text-align: center">STIT</th>
+      <th style="text-align: center">DVA</th>
+      <th style="text-align: center">FlowEdit (Ours)</th>
+    </tr>
+    <tr>
+      <td>
+        <video width="240px" controls>
+          <source src="assets/video_comprison/origin_crop.mp4" type="video/mp4">
+        </video>
+      </td>
+      <td>
+        <video width="240px" controls>
+          <source src="assets/video_comprison/latent_mustache_crop.mp4" type="video/mp4">
+        </video>
+      </td>
+      <td>
+        <video width="240px" controls>
+          <source src="assets/video_comprison/stit_mustache_crop.mp4" type="video/mp4">
+        </video>
+      </td>
+      <td>
+        <video width="240px" controls>
+          <source src="assets/video_comprison/dva_mustache_crop.mp4" type="video/mp4">
+        </video>
+      </td>
+      <td>
+        <video width="240px" controls>
+          <source src="assets/video_comprison/our_mustache1_crop.mp4" type="video/mp4">
+        </video>
+      </td>
+    </tr>
+  </table>
+</div>
 
-## 📬 Contact
+#### Add Mustache - Paste-back Comparison
 
-If you have any questions or suggestions, feel free to reach out!
+<div align="center">
+  <table>
+    <tr>
+      <th style="text-align: center">Original Video</th>
+      <th style="text-align: center">LatentTrans</th>
+      <th style="text-align: center">STIT</th>
+      <th style="text-align: center">DVA</th>
+      <th style="text-align: center">FlowEdit (Ours)</th>
+    </tr>
+    <tr>
+      <td>
+        <video width="240px" controls>
+          <source src="assets/video_comprison/origin_full.mp4" type="video/mp4">
+        </video>
+      </td>
+      <td>
+        <video width="240px" controls>
+          <source src="assets/video_comprison/latent_mustache.mp4" type="video/mp4">
+        </video>
+      </td>
+      <td>
+        <video width="240px" controls>
+          <source src="assets/video_comprison/stit_mustache.mp4" type="video/mp4">
+        </video>
+      </td>
+      <td>
+        <video width="240px" controls>
+          <source src="assets/video_comprison/dva_mustache.mp4" type="video/mp4">
+        </video>
+      </td>
+      <td>
+        <video width="240px" controls>
+          <source src="assets/video_comprison/our_mustache1.mp4" type="video/mp4">
+        </video>
+      </td>
+    </tr>
+  </table>
+</div>
+
+#### Add Lipstick - Non-paste-back Comparison
+
+<div align="center">
+  <table>
+    <tr>
+      <th style="text-align: center">Original Video</th>
+      <th style="text-align: center">LatentTrans</th>
+      <th style="text-align: center">STIT</th>
+      <th style="text-align: center">DVA</th>
+      <th style="text-align: center">FlowEdit (Ours)</th>
+    </tr>
+    <tr>
+      <td>
+        <video width="240px" controls>
+          <source src="assets/video_comprison/origin_crop.mp4" type="video/mp4">
+        </video>
+      </td>
+      <td>
+        <video width="240px" controls>
+          <source src="assets/video_comprison/latent_lipstick_crop.mp4" type="video/mp4">
+        </video>
+      </td>
+      <td>
+        <video width="240px" controls>
+          <source src="assets/video_comprison/stit_lipstick_crop.mp4" type="video/mp4">
+        </video>
+      </td>
+      <td>
+        <video width="240px" controls>
+          <source src="assets/video_comprison/dva_lipstick_crop.mp4" type="video/mp4">
+        </video>
+      </td>
+      <td>
+        <video width="240px" controls>
+          <source src="assets/video_comprison/our_lipstick2_crop.mp4" type="video/mp4">
+        </video>
+      </td>
+    </tr>
+  </table>
+</div>
+
+#### Add Lipstick - Paste-back Comparison
+
+<div align="center">
+  <table>
+    <tr>
+      <th style="text-align: center">Original Video</th>
+      <th style="text-align: center">LatentTrans</th>
+      <th style="text-align: center">STIT</th>
+      <th style="text-align: center">DVA</th>
+      <th style="text-align: center">FlowEdit (Ours)</th>
+    </tr>
+    <tr>
+      <td>
+        <video width="240px" controls>
+          <source src="assets/video_comprison/origin_full.mp4" type="video/mp4">
+        </video>
+      </td>
+      <td>
+        <video width="240px" controls>
+          <source src="assets/video_comprison/latent_lipstick.mp4" type="video/mp4">
+        </video>
+      </td>
+      <td>
+        <video width="240px" controls>
+          <source src="assets/video_comprison/stit_lipstick.mp4" type="video/mp4">
+        </video>
+      </td>
+      <td>
+        <video width="240px" controls>
+          <source src="assets/video_comprison/dva_lipstick.mp4" type="video/mp4">
+        </video>
+      </td>
+      <td>
+        <video width="240px" controls>
+          <source src="assets/video_comprison/our_lipstick2.mp4" type="video/mp4">
+        </video>
+      </td>
+    </tr>
+  </table>
+</div>
+
+### Different Edits on the Same Subject
+
+<table class="center">
+  <tr>
+    <td style="text-align: center"><b>Original Video</b></td>
+    <td style="text-align: center"><b>Add Mustache</b></td>
+    <td style="text-align: center"><b>Keep Smile</b></td>
+    <td style="text-align: center"><b>Keep Mouth Open</b></td>
+  </tr>
+  <tr>
+    <td style="text-align: center"><img width="250" height="150" src="assets/samples/bob.gif"></a></td>
+    <td style="text-align: center"><img src="assets/samples/bob_mustache.gif"></a></td>
+    <td style="text-align: center"><img src="assets/samples/bob_smile.gif"></a></td>
+    <td style="text-align: center"><img src="assets/samples/bob_mouth.gif"></a></td>
+  </tr>
+  <tr>
+    <td style="text-align: center"><img width="250" height="150" src="samples/haley.gif"></a></td>
+    <td style="text-align: center"><img src="assets/samples/haley_mustache.gif"></a></td>
+    <td style="text-align: center"><img src="assets/samples/haley_lip.gif"></a></td>
+    <td style="text-align: center"><img src="assets/samples/haley_smile.gif"></a></td>
+  </tr>
+  <tr>
+    <td style="text-align: center"><img width="250" height="150" src="samples/kate.gif"></a></td>
+    <td style="text-align: center"><img src="assets/samples/kate_mustache.gif"></a></td>
+    <td style="text-align: center"><img src="assets/samples/kate_lip.gif"></a></td>
+    <td style="text-align: center"><img src="assets/samples/kate_smile.gif"></a></td>
+  </tr>
+</table>
+
+### Output
+
+Edited frames are saved in the directory specified by `--output_path` with the following naming convention:
+- `{index:04d}_orig_{source_prompt}_edit_{target_prompt}_...`
+- Reconstruction files: `{index:04d}_reconstruct_...`
+
+### Key Advantages
+
+1. **Simultaneous Reconstruction and Editing**: FlowEdit uses h-Edit to obtain recon/edit items, then applies our novel masking to optimize both objectives simultaneously.
+
+2. **Region-Aware Editing**: Our cosine similarity-based masking applies editing only to relevant regions, preserving identity better than global editing.
+
+3. **Superior Video Editing**: FlowEdit maintains temporal consistency and identity preservation better than LatentTrans, STIT, and DVA baselines.
+
+
+## Acknowledgments
+
+Our FlowEdit method utilizes h-Edit's `local_encoder_pullback_zt` for obtaining reconstruction and editing direction items from h-space. Our novel contribution is the masking algorithm that selectively applies editing based on h-space directional analysis. We also acknowledge:
+
+- [h-Edit](https://arxiv.org/pdf/2503.02187) - We use h-Edit's h-space computation (`local_encoder_pullback_zt`) to obtain reconstruction and editing items
+- [Edit Friendly](https://github.com/inbarhub/DDPM_inversion) - DDPM inversion techniques
+- [PnP Inversion](https://github.com/cure-lab/PnPInversion/) - Inversion and attention control
+- [Noise Map Guidance](https://github.com/hansam95/NMG) - Noise-guided editing
+- [Prompt-to-Prompt](https://github.com/google/prompt-to-prompt) - Attention-based editing
+
+## Citation
+
+If you use this code in your research, please cite our paper:
+
+
+```bibtex
+@inproceedings{pixelperfect2026,
+  title={Pixel-Perfect Puppetry: Precision-Guided Enhancement for Face Image and Video Editing},
+  author={Li, Yan and Wang, Zhenyi and Li, Guanghao and Xue, Wei and Luo, Wenhan and Guo, Yike},
+  booktitle={International Conference on Learning Representations (ICLR)},
+  year={2026}
+}
+```
+
+
+## Contact
+
+Feel free to open an issue on the repository or send an email.
