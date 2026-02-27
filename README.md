@@ -54,12 +54,10 @@ _, _, v_edit = model.unet.local_encoder_pullback_zt(
 Our core innovation is the selective editing mechanism based on h-space directional analysis:
 
 - **Cosine Similarity Computation**: Analyze alignment between reconstruction and editing directions
-  ```python
-  cos_similarity = cal_cosine(v_edit, v_orig)
-  ```
+
 - **Adaptive Masking**: Generate edit/preserve masks based on directional similarity
   ```python
-  mask = diffusion_step(rec_term, edit_term, t=int(tt), prox='l1', quantile=cos_similarity)
+  mask = diffusion_step(rec_term, edit_term, t=int(tt), prox='l1', quantile=similarity)
   ```
 - **Selective Update**: Apply editing only to regions where directions align
   ```python
