@@ -121,22 +121,6 @@ python main_flowedit.py \
 | `--skip` | `int` | `0` | Steps to skip in early diffusion |
 | `--eta` | `float` | `1.0` | DDPM stochasticity (0.0 for deterministic) |
 
-## Method Variants
-
-### FlowEdit-R (Random)
-- Employs enhanced stochastic DDPM inversion ($\eta > 0$)
-- Optimized for complex edits requiring maximum flexibility
-- Recommended for most text-guided editing tasks with superior performance
-
-### FlowEdit-D (Deterministic)
-- Utilizes advanced deterministic DDIM inversion ($\eta = 0$)
-- Enhanced for pose changes with MasaCtrl integration
-- More predictable and stable than FlowEdit-R with refined control
-
-### Implicit vs Explicit Formulations
-- **Implicit**: Our enhanced formulation for challenging cases, leverages advanced optimization
-- **Explicit**: Direct computation approach, faster but less robust for complex scenarios
-
 ## Best Practices
 
 ### Parameter Tuning
