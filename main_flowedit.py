@@ -389,11 +389,11 @@ if __name__ == "__main__":
     parser.add_argument("--device_num", type=int, default=0)
     
     # Data and output path
-    parser.add_argument('--data_path', type=str, default="./assets/demo")
+    parser.add_argument('--data_path', type=str, default="./data")
     parser.add_argument('--output_path', type=str, default="./results/flowedit_guide/")
 
     # Choose methods and editing categories
-    parser.add_argument("--mode",  default="h_edit_R_p2p", help="modes: h_edit_R, ef, h_edit_D_p2p, nmg_p2p, pnp_inv_p2p, h_edit_R_p2p, ef_p2p")
+    parser.add_argument("--mode",  default="guide")
 
     # Sampling and skipping steps
     parser.add_argument("--num_diffusion_steps", type=int, default=50) 
@@ -460,7 +460,7 @@ if __name__ == "__main__":
         ldm_stable_each_query = copy.deepcopy(ldm_stable).to(device)
 
         # 5.3 + 5.4. Define path to the image, editing_instruction, blended_word for P2P/ Load prompts
-        image_path = "sampled_celebahq_500" + current_image_data['image']
+        image_path = "./sampled_celebahq_500" + current_image_data['image']
 
         original_prompt = current_image_data.get('source_prompt', "") # default empty string
         editing_prompt = current_image_data.get('target_prompt', "")

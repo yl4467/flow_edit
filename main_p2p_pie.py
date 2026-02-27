@@ -286,12 +286,6 @@ if __name__ == "__main__":
         if x0_dec.dim()<4:
             x0_dec = x0_dec[None,:,:,:]
         img = image_grid(x0_dec)
-
-        # 5.14. End of measuring time
-         
-        # torch.cuda.synchronize()  # Ensure all CUDA operations are done
-        # end_time = time.time()
-        # print(f'time: {end_time - start_time}')
         
         # 5.15. Save image & clean memory
         img.save(present_image_save_path)
