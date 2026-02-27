@@ -80,7 +80,7 @@ pip install --no-cache-dir git+https://github.com/openai/CLIP.git
 Execute our implementation via `main_flowedit.py`, which calls our novel algorithm in `inversion/p2p_h_edit.py`:
 
 ```bash
-# Run FlowEdit-R with P2P (recommended configuration)
+# Run FlowEdit with P2P (recommended configuration)
 python main_flowedit.py \
     --implicit \
     --optimization_steps 1 \
@@ -101,15 +101,15 @@ python main_flowedit.py \
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `--cfg_src` | `float` | `1.0` | Classifier-free guidance for source prompt |
-| `--cfg_src_edit` | `float` | `5.0` | Source edit guidance ($\hat{w}^{orig}$) |
-| `--cfg_tar` | `float` | `7.5` | Target edit guidance ($w^{edit}$) |
+| `--cfg_src_edit` | `float` | `5.0` | Source edit guidance |
+| `--cfg_tar` | `float` | `7.5` | Target edit guidance |
 
 ### P2P Attention Control Parameters
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `--xa` | `float` | `0.4` | Cross-attention control strength |
-| `--sa` | `float` | `0.35` | Self-attention control strength (0.6 for h-Edit-D, 0.35 for h-Edit-R) |
+| `--sa` | `float` | `0.35` | Self-attention control strength |
 
 ### Diffusion Parameters
 
@@ -125,7 +125,7 @@ python main_flowedit.py \
 FlowEdit uses these parameters from `main_flowedit.py` to control the editing process:
 1. **`--cfg_src_edit` and `--cfg_tar`: Control classifier-free guidance strengths for computing edit directions. These affect the `edit_term` in your masking algorithm.
 2. **`--optimization_steps`**: Number of iterative refinement steps (default: 1)
-3. **`--eta`**: DDPM stochasticity (1.0 for FlowEdit-R, 0.0 for FlowEdit-D)
+3. **`--eta`**: DDPM stochasticity
 
 ### Tuning FlowEdit's Mechanism
 - **Region-aware editing**: The `diffusion_step` function uses cosine similarity between recon and edit directions in h-space to determine editing regions
